@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anuvad Translator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&display=swap">
+<style>
+  :root {
+    --bg: #EEF3F3;
+    --surface: #FFFFFF;
+    --surface-2: #E1EAEA;
+    --fg: #10252A;
+    --muted: #526A6F;
+    --line: #C9D7D8;
+    --accent: #0A7C74;
+    --accent-fg: #FFFFFF;
+    --danger: #B3261E;
+    --font-display: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Inter', 'Noto Sans Devanagari', 'Noto Sans Bengali', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0C1719;
+      --surface: #132226;
+      --surface-2: #1B2F34;
+      --fg: #E4EFEF;
+      --muted: #8FA8AC;
+      --line: #26403F;
+      --accent: #3CC4B9;
+      --accent-fg: #062421;
+      --danger: #FF8A80;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    padding: 32px 16px 40px;
+  }
+  .app { max-width: 960px; margin: 0 auto; display: grid; gap: 20px; }
+
+  header { display: grid; gap: 4px; }
+  .brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 2rem;
+    letter-spacing: -0.01em;
+  }
+  .native { font-size: 1.25rem; color: var(--accent); font-weight: 600; }
+  .sub { margin: 0; color: var(--muted); max-width: 60ch; }
+
+  .bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: end;
+  }
+  .field { display: grid; gap: 6px; min-width: 0; }
+  .field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .sel { position: relative; }
+  .sel::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding: 0 36px 0 12px;
+    font: inherit;
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    text-overflow: ellipsis;
+  }
+  button { font: inherit; cursor: pointer; }
+  .swap {
+    height: 44px;
+    width: 44px;
+    display: grid;
+    place-items: center;
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .swap:disabled { opacity: 0.4; cursor: not-allowed; }
+  .swap svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  .pane {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .pane.out { background: var(--surface-2); }
+  textarea, .out-text {
+    width: 100%;
+    min-height: 240px;
+    margin: 0;
+    padding: 16px;
+    font: inherit;
+    font-size: 1.125rem;
+    line-height: 1.55;
+    color: var(--fg);
+    background: transparent;
+    border: 0;
+    resize: vertical;
+    overflow-wrap: anywhere;
+  }
+  textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .out-text { white-space: pre-wrap; }
+  .pane[data-state="busy"] .out-text { color: var(--muted); }
+  .pane[data-state="error"] .out-text { color: var(--danger); }
+
+  .foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 12px 8px 16px;
+    border-top: 1px solid var(--line);
+  }
+  .note { font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 0; }
+  .actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn {
+    height: 40px;
+    padding: 0 16px;
+    font-weight: 600;
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .btn.primary { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn[hidden] { display: none; }
+
+  button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .fine { margin: 0; font-size: 0.8125rem; color: var(--muted); }
+
+  @media (max-width: 720px) {
+    body { padding-top: 20px; }
+    h1 { font-size: 1.625rem; }
+    .panes { grid-template-columns: minmax(0, 1fr); }
+    textarea, .out-text { min-height: 180px; }
+    .btn.primary { flex: 1; }
+    .foot { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <div class="brand">
+      <h1>Anuvad</h1>
+      <span class="native" lang="hi" aria-hidden="true">अनुवाद</span>
+    </div>
+    <p class="sub">Translate between Indian and world languages. Paste or type, pick a language, and press Translate.</p>
+  </header>
+
+  <section class="bar" aria-label="Languages">
+    <div class="field">
+      <label for="src">From</label>
+      <div class="sel"><select id="src"></select></div>
+    </div>
+    <button class="swap" id="swap" type="button" aria-label="Swap languages" title="Swap languages">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg>
+    </button>
+    <div class="field">
+      <label for="tgt">To</label>
+      <div class="sel"><select id="tgt"></select></div>
+    </div>
+  </section>
+
+  <section class="panes">
+    <div class="pane in">
+      <textarea id="in" maxlength="5000" dir="auto" aria-label="Text to translate" placeholder="Type or paste text here">Good morning! How far is the railway station from here?</textarea>
+      <div class="foot">
+        <span class="note" id="count">0 / 5,000</span>
+        <div class="actions">
+          <button class="btn" id="clear" type="button">Clear</button>
+          <button class="btn primary" id="go" type="button">Translate</button>
+          <button class="btn" id="stop" type="button" hidden>Stop</button>
+        </div>
+      </div>
+    </div>
+    <div class="pane out" id="outPane" data-state="example">
+      <div class="out-text" id="out" lang="hi" dir="auto" aria-live="polite">सुप्रभात! यहाँ से रेलवे स्टेशन कितनी दूर है?</div>
+      <div class="foot">
+        <span class="note" id="outNote">Example translation</span>
+        <div class="actions">
+          <button class="btn" id="copy" type="button">Copy</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="fine">Translations come from the free MyMemory service and can contain mistakes. Check anything important. Needs an internet connection.</p>
+</main>
+
+<script>
+  var LANGS = [
+    ['en', 'English', 'English'], ['hi', 'Hindi', 'हिन्दी'], ['as', 'Assamese', 'অসমীয়া'], ['bn', 'Bengali', 'বাংলা'],
+    ['ta', 'Tamil', 'தமிழ்'], ['te', 'Telugu', 'తెలుగు'], ['kn', 'Kannada', 'ಕನ್ನಡ'], ['ml', 'Malayalam', 'മലയാളം'],
+    ['mr', 'Marathi', 'मराठी'], ['gu', 'Gujarati', 'ગુજરાતી'], ['pa', 'Punjabi', 'ਪੰਜਾਬੀ'], ['or', 'Odia', 'ଓଡ଼ିଆ'],
+    ['ur', 'Urdu', 'اردو'], ['ne', 'Nepali', 'नेपाली'],
+    ['es', 'Spanish', 'Español'], ['fr', 'French', 'Français'], ['de', 'German', 'Deutsch'], ['pt', 'Portuguese', 'Português'],
+    ['it', 'Italian', 'Italiano'], ['ru', 'Russian', 'Русский'], ['ar', 'Arabic', 'العربية'], ['ja', 'Japanese', '日本語'],
+    ['ko', 'Korean', '한국어'], ['zh-CN', 'Chinese (Simplified)', '简体中文'], ['id', 'Indonesian', 'Bahasa Indonesia'],
+    ['tr', 'Turkish', 'Türkçe'], ['th', 'Thai', 'ไทย'], ['vi', 'Vietnamese', 'Tiếng Việt']
+  ];
+  var $ = function (id) { return document.getElementById(id); };
+  var src = $('src'), tgt = $('tgt'), swap = $('swap'), input = $('in'), out = $('out'), outPane = $('outPane');
+  var go = $('go'), stop = $('stop'), copy = $('copy'), clear = $('clear'), count = $('count'), outNote = $('outNote');
+
+  function option(value, label) {
+    var o = document.createElement('option');
+    o.value = value;
+    o.textContent = label;
+    return o;
+  }
+  function labelFor(l) { return l[2] === l[1] ? l[1] : l[1] + ' · ' + l[2]; }
+  src.appendChild(option('auto', 'Detect language'));
+  LANGS.forEach(function (l) { src.appendChild(option(l[0], labelFor(l))); tgt.appendChild(option(l[0], labelFor(l))); });
+  src.value = 'auto';
+  tgt.value = 'hi';
+
+  function setState(state, note) {
+    outPane.dataset.state = state;
+    outNote.textContent = note || '';
+  }
+  function updateCount() { count.textContent = input.value.length.toLocaleString('en-US') + ' / 5,000'; }
+  function syncSwap() { swap.disabled = src.value === 'auto'; }
+  updateCount();
+  syncSwap();
+
+  // The free service accepts about 500 characters per request, so long text is split at sentence or line ends.
+  function chunk(text, max) {
+    var parts = text.match(/[^.!?।\n]+[.!?।]*\s*|\n/g) || [text];
+    var chunks = [], cur = '';
+    parts.forEach(function (p) {
+      while (p.length > max) {
+        if (cur) { chunks.push(cur); cur = ''; }
+        chunks.push(p.slice(0, max));
+        p = p.slice(max);
+      }
+      if ((cur + p).length > max) { chunks.push(cur); cur = p; } else { cur += p; }
+    });
+    if (cur) chunks.push(cur);
+    return chunks.filter(function (c) { return c.trim() !== '' || c === '\n'; });
+  }
+
+  async function translateChunk(text, from, to, signal) {
+    if (!text.trim()) return text;
+    var url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) +
+      '&langpair=' + encodeURIComponent((from === 'auto' ? 'Autodetect' : from) + '|' + to);
+    var res = await fetch(url, { signal: signal });
+    if (!res.ok) throw new Error('network');
+    var data = await res.json();
+    if (data.responseStatus !== 200 && data.responseStatus !== '200') {
+      var msg = String(data.responseDetails || '');
+      if (/distinct/i.test(msg)) throw new Error('same');
+      if (/quota|limit/i.test(msg)) throw new Error('quota');
+      throw new Error('failed');
+    }
+    return data.responseData.translatedText;
+  }
+
+  var ctl = null;
+  function setBusy(busy) {
+    go.hidden = busy;
+    stop.hidden = !busy;
+    src.disabled = busy;
+    tgt.disabled = busy;
+    swap.disabled = busy || src.value === 'auto';
+  }
+
+  var MESSAGES = {
+    same: 'Pick two different languages.',
+    quota: 'The free daily limit was reached. Try again later.',
+    network: 'Could not reach the translation service. Check your internet connection and try again.',
+    failed: 'The translation did not come back. Try again.'
+  };
+
+  async function run() {
+    var text = input.value.trim();
+    if (!text) { setState(outPane.dataset.state, 'Type or paste some text first'); input.focus(); return; }
+
+    ctl = new AbortController();
+    out.lang = tgt.value;
+    out.textContent = 'Translating…';
+    setState('busy', 'Translating…');
+    setBusy(true);
+    try {
+      var pieces = chunk(text, 450), result = '';
+      for (var i = 0; i < pieces.length; i++) {
+        result += await translateChunk(pieces[i], src.value, tgt.value, ctl.signal);
+        out.textContent = result;
+      }
+      out.textContent = result;
+      setState('done', 'Done');
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        setState('idle', 'Stopped');
+        if (out.textContent === 'Translating…') out.textContent = '';
+      } else {
+        var key = e && MESSAGES[e.message] ? e.message : (e instanceof TypeError ? 'network' : 'failed');
+        out.textContent = MESSAGES[key];
+        setState('error', '');
+      }
+    } finally {
+      ctl = null;
+      setBusy(false);
+    }
+  }
+
+  go.addEventListener('click', run);
+  stop.addEventListener('click', function () { if (ctl) ctl.abort(); });
+  input.addEventListener('input', updateCount);
+  input.addEventListener('keydown', function (ev) {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') { ev.preventDefault(); if (!go.hidden) run(); }
+  });
+  src.addEventListener('change', syncSwap);
+
+  swap.addEventListener('click', function () {
+    if (src.value === 'auto') return;
+    var a = src.value;
+    src.value = tgt.value;
+    tgt.value = a;
+    if (outPane.dataset.state === 'done' && out.textContent.trim()) {
+      input.value = out.textContent;
+      updateCount();
+      out.textContent = '';
+      setState('idle', '');
+    }
+    out.lang = tgt.value;
+    syncSwap();
+  });
+
+  clear.addEventListener('click', function () {
+    input.value = '';
+    updateCount();
+    out.textContent = '';
+    setState('idle', '');
+    input.focus();
+  });
+
+  copy.addEventListener('click', async function () {
+    var text = out.textContent;
+    if (!text.trim()) return;
+    var previous = outNote.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      outNote.textContent = 'Copied';
+    } catch (e) {
+      var range = document.createRange();
+      range.selectNodeContents(out);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      outNote.textContent = 'Selected. Press Ctrl+C to copy';
+    }
+    setTimeout(function () { outNote.textContent = previous; }, 1800);
+  });
+</script>
+</body>
+</html>
